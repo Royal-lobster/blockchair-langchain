@@ -1,6 +1,6 @@
 import { initializeAgentExecutorWithOptions } from "langchain/agents";
 import { OpenAI } from "langchain/llms/openai";
-import { EtherscanTool } from "./etherscanTool";
+import { EtherscanTransactionDetails } from "./etherscanTool";
 import 'dotenv/config'
 
 const model = new OpenAI({
@@ -11,7 +11,7 @@ const model = new OpenAI({
 
 async function main() {
   const tools = [
-    new EtherscanTool(),
+    new EtherscanTransactionDetails(),
   ];
 
   const executor = await initializeAgentExecutorWithOptions(tools, model, {
@@ -22,7 +22,7 @@ async function main() {
 
   const result = await executor.call({
     input:
-      "What is best color to paint a house?",
+      "Tell me details about this transaction 0x877138c790a4914aeafdacaa43ffe90f119c0fc06a33005add2e9b6b706c5f0a",
   });
 
   console.log(`🗿 Output: ${result.output}`);
