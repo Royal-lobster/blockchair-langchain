@@ -1,31 +1,34 @@
-import { initializeAgentExecutorWithOptions } from "langchain/agents";
+import { loadQARefineChain } from "langchain/chains";
+import { PDFLoader } from "langchain/document_loaders/fs/pdf";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { OpenAI } from "langchain/llms/openai";
-import { EtherscanTransactionDetails } from "./etherscanTool";
-import 'dotenv/config'
+import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import "dotenv/config"
 
-const model = new OpenAI({
-  temperature: 0,
-  openAIApiKey: process.env.OPENAI_API_KEY!,
-  modelName: "gpt-3.5-turbo",
-});
+const main = async () => {
+  // Create the models and chain
+  const embeddings = new OpenAIEmbeddings();
+  const model = new OpenAI({ temperature: 0 });
+  const chain = loadQARefineChain(model);
 
-async function main() {
-  const tools = [
-    new EtherscanTransactionDetails(),
-  ];
+  // Load the documents and create the vector store
+  const loader = new PDFLoader("./input.pdf", {
+    splitPages: false,
+  });
+  const docs = await loader.load();
+  const store = await MemoryVectorStore.fromDocuments(docs, embeddings);
 
-  const executor = await initializeAgentExecutorWithOptions(tools, model, {
-    agentType: "zero-shot-react-description",
-    verbose: true,
-    maxIterations: 10,
+  // Select the relevant documents
+  const question = "Create a query that returns last 5 transactions on ethereum chain and list the involving wallet addresses";
+  const relevantDocs = await store.similaritySearch(question);
+
+  // Call the chain
+  const res = await chain.call({
+    input_documents: relevantDocs,
+    question,
   });
 
-  const result = await executor.call({
-    input:
-      "Tell me details about this transaction 0x877138c790a4914aeafdacaa43ffe90f119c0fc06a33005add2e9b6b706c5f0a",
-  });
-
-  console.log(`🗿 Output: ${result.output}`);
-}
+  console.log(res);
+};
 
 main();
