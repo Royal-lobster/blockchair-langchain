@@ -2,24 +2,29 @@ import { Tool } from "langchain/tools";
 import axios from "axios";
 import chalk from "chalk";
 
+const etherscanBaseUrl = "https://api.etherscan.io/api";
+
 export class EtherscanTransactionDetails extends Tool {
   name = "etherscan-transaction-details";
   description =
     "Use this tool if you want to get the transaction details of a transaction hash";
 
-  async _call(input: string): Promise<string> {
-    const { data } = await axios.get(makeUrl({action: "eth_getTransactionByHash", txhash: input}))
-    
-
-    console.log(data);
+  async _call(txhash: string): Promise<string> {
+    const { data } = await axios.get(
+      makeUrl(etherscanBaseUrl, {
+        method: "proxy",
+        action: "eth_getTransactionByHash",
+        txhash,
+      })
+    );
 
     if (data.status == 0) {
-      return `The transaction hash ${input} is not valid.`;
+      return `The transaction hash ${txhash} is not valid.`;
     }
 
     const transaction = data.result;
 
-    return `The result for transaction hash ${input} is: \n ${JSON.stringify(
+    return `The result for transaction hash ${txhash} is: \n ${JSON.stringify(
       transaction,
       null,
       2
@@ -27,12 +32,22 @@ export class EtherscanTransactionDetails extends Tool {
   }
 }
 
+export class EtherscanContractDetails extends Tool {
+  name = "etherscan-contract-details";
+  description =
+    "use this tool if you want to get details about a contract and token details.";
+
+  async _call(input: string): Promise<string> {
+    return ""
+  }
+}
+
 /*============= UTILITY FUNCTIONS ===============*/
 
-const makeUrl = (params: Record<string, string>) => {
-  const url = new URL("https://api.etherscan.io/api");
-  const searchParams = {...params, module: "proxy", apikey: process.env.ETHERSCAN_API_KEY!}
+const makeUrl = (baseURL: string, params: Record<string, string>) => {
+  const url = new URL(baseURL);
+  const searchParams = { apikey: process.env.ETHERSCAN_API_KEY!, ...params };
   url.search = new URLSearchParams(searchParams).toString();
-  console.log(chalk.bgYellow("REQUEST TO:") + chalk.cyan(` ${url.toString()}`))
+  console.log(chalk.bgYellow("REQUEST TO:") + chalk.cyan(` ${url.toString()}`));
   return url.toString();
 };
