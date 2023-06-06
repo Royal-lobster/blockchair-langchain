@@ -1,5 +1,6 @@
 import { Tool } from "langchain/tools";
 import axios from "axios";
+import chalk from "chalk";
 
 export class EtherscanTransactionDetails extends Tool {
   name = "etherscan-transaction-details";
@@ -32,6 +33,6 @@ const makeUrl = (params: Record<string, string>) => {
   const url = new URL("https://api.etherscan.io/api");
   const searchParams = {...params, module: "proxy", apikey: process.env.ETHERSCAN_API_KEY!}
   url.search = new URLSearchParams(searchParams).toString();
-  console.log(url.toString())
+  console.log(chalk.bgYellow("REQUEST TO:") + chalk.cyan(` ${url.toString()}`))
   return url.toString();
 };
