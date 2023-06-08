@@ -42,8 +42,12 @@ class CustomRequestGetTool extends RequestsGetTool {
 const main = async () => {
   // Create the models
   const embeddings = new OpenAIEmbeddings();
-  const model = new OpenAI({ temperature: 0, modelName: "gpt-4" });
-  console.log("Loaded models");
+
+  const model = new OpenAI({
+    temperature: 0,
+    openAIApiKey: process.env.OPENAI_API_KEY || '',
+    modelName: "gpt-4",
+  });
 
   // Load the documents and create the vector store
   const loader = new TextLoader("./input.md");
