@@ -1,5 +1,8 @@
 # API DOCUMENTATION FOR BLOCKCHAIR
 
+
+NOTE: Try to use only dashboard endpoints if querying for ethereum.
+
 ## Dashboard endpoints for Ethereum
 
 ### Block info
@@ -99,7 +102,7 @@ If there's no `{:hash}` has been found in the database, there won't be such key.
 **Possible options:**
 
 -   `?erc_20=true` shows information about ERC-20 token transfers in this transaction
--   `?effects=true` shows state changes for the transaction
+-   `?effects=true` shows state changes for the transaction (balance changes for ETH and ERC-20 tokens. VERY USEFUL! If batched transaction, this will show all tokens transferend to whom and how much)
 -   `?trace_mempool=true` — this option tries to retrieve a list of internall calls for mempool transactions. In conjunction with `&erc_20=true` it also shows the list of ERC-20 transfers. This is an experimental feature. Please note that internal transfers may get invalidated when transaction gets confirmed.
 -   `?assets_in_usd=true` — adds `value_usd_now` to all `layer_2.erc_20` items yielding the current (not at the moment of the transaction!) USD value of tokens (`null` if the price is unknown)
 -   `?events=true` — this option costs `1` additional request point to use. When enabled, it adds an array of event logs to the output. Every log contains `topics`, `data`, `contract`, `log_index`, and `decoded_event`. Depending on how much our API knows about the event signature, there are 3 detalization levels for `decoded_event` (example transaction with all 3: `https://api.blockchair.com/ethereum/dashboards/transaction/0x7d52cf58fe78403e8816dae6e900baff92b35760b4ed81cecd2590eafcde3dad?events=true`):
