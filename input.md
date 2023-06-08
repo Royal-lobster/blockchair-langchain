@@ -1,3 +1,231 @@
+# API DOCUMENTATION FOR BLOCKCHAIR
+
+## Dashboard endpoints for Ethereum
+
+### Block info
+
+**Endpoints:**
+
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/block/{:height}`
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/block/{:hash}`
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/blocks/{:height},...,{:height}` (up to 10 blocks, comma-separated)
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/blocks/{:hash},...,{:hash}` (up to 10 blocks, comma-separated)
+
+**Where:**
+
+-   `{:eth_chain}` can only be: `ethereum` or `ethereum/testnet`
+-   `{:height}` is the block height (integer value), also known as block id
+-   `{:hash}` is the block hash (regex: `/^0x[0-9a-f]{64}$/i`)
+
+**Possible options:**
+
+-   `?limit={:limit}` limits the number of returned transaction hashes contained in the block. Default is `100`. Maximum is `10000`. In case of `0` returns an empty transaction hashes array
+-   `?offset={:offset}` allows to paginate transaction hashes. Default is `0`. Maximum is `1000000`.
+
+**Output:**
+
+`data` contains an associative array where found block heights or block hashes used as keys:
+
+-   `data.{:id}.block` — information about the block (see [Ethereum-like block object](https://blockchair.com/api/docs#link_105) for the field descriptions)
+-   `data.{:id}.transactions` — the array of transaction hashes (sorted by position in the block ascending) included in the block (respecting the set limit and offset)
+-   `data.{:id}.synthetic_transactions` — array of internal Blockchair ids of synthetic transactions. By synthetic transactions we understand state changes in the blockchain which don't have parental transaction entities, i.e. transferring miner reward (for blocks and uncles), coin generation in the genesis block, etc. This array is not iterable, and always yields the entire result set.
+-   `data.{:id}.uncles` — the array of hashes of the block's uncles (in case there are no uncles — an empty array). This array is not iterable as well, and always yields the entire result set.
+
+Where `{:id}` is either `{:height}` or `{:hash}` from the query string.
+
+If there's no `{:id}` has been found in the database, there won't be such key.
+
+Note that the total number of transactions in the block is contained in `data.{:id}.block.transaction_count`, but that doesn't take synthetic transactions into account (use `data.{:id}.block.synthetic_transaction_count` instead)
+
+**Context keys:**
+
+-   `context.results` — number of found blocks
+-   `context.limit` — applied limit
+-   `context.offset` — applied offset
+-   `context.state` — best block height on the `{:eth_chain}` chain (tip: it's possible to calculate the number of confirmation block received using this formula: `confirmations = context.state - data.{:id}.block.id + 1`)
+
+**Example requests:**
+
+-   `https://api.blockchair.com/ethereum/dashboards/block/2345678`
+-   `https://api.blockchair.com/ethereum/dashboards/block/0xda214d1b1d458e7ae0e626b69a52a59d19762c51a53ff64813c4d31256282fdf`
+-   `context.state`: best block height on the `{:eth_chain}` chain (tip: it's possible to calculate the number of confirmation transaction received using this formula: `confirmations = data.{:id}.transaction.block_id - context.state + 1`, or if `data.{:id}.transaction.block_id` is `-1` it's an unconfirmed transaction)
+-   `https://api.blockchair.com/ethereum/dashboards/block/2345678?limit=2`
+-   `https://api.blockchair.com/ethereum/dashboards/block/2345678?limit=2&offset=2`
+
+### Uncle info
+
+**Endpoints:**
+
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/uncle/{:hash}`
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/uncle/{:hash},...,{:hash}` (up to 10 uncles, comma-separated)
+
+**Where:**
+
+-   `{:eth_chain}` can only be: `ethereum` or `ethereum/testnet`
+-   `{:hash}` is the uncle hash (regex: `/^0x[0-9a-f]{64}$/i`)
+
+**Output:**
+
+`data` contains an associative array where uncle hashes used as keys:
+
+-   `data.{:hash}.uncle` — information about the block (see [Ethereum-like uncle object](https://blockchair.com/api/docs#link_402) for the field descriptions)
+
+If there's no `{:hash}` has been found in the database, there won't be such key.
+
+**Context keys:**
+
+-   `context.results`: number of found uncles
+-   `context.limit`: applied limit
+-   `context.offset`: applied offset
+-   `context.state`: best block height on the `{:eth_chain}` chain
+
+**Example requests:**
+
+-   `https://api.blockchair.com/ethereum/dashboards/uncle/0x5cd50096dbb856a6d1befa6de8f9c20decb299f375154427d90761dc0b101109`
+-   `https://api.blockchair.com/ethereum/dashboards/uncles/0x5cd50096dbb856a6d1befa6de8f9c20decb299f375154427d90761dc0b101109,0xedc7a92c2a8aa140b0afa26db4ce8e05994a67d6fc3d736ddd77210b0ba565bb`
+
+### Transaction info
+
+**Endpoints:**
+
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/transaction/{:hash}`
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/transactions/{:hash},...,{:hash}` (up to 10 transactions, comma-separated)
+
+**Where:**
+
+-   `{:eth_chain}` can only be: `ethereum` or `ethereum/testnet`
+-   `{:hash}` is the transaction hash (regex: `/^0x[0-9a-f]{64}$/i`), also known as txid
+
+**Possible options:**
+
+-   `?erc_20=true` shows information about ERC-20 token transfers in this transaction
+-   `?effects=true` shows state changes for the transaction
+-   `?trace_mempool=true` — this option tries to retrieve a list of internall calls for mempool transactions. In conjunction with `&erc_20=true` it also shows the list of ERC-20 transfers. This is an experimental feature. Please note that internal transfers may get invalidated when transaction gets confirmed.
+-   `?assets_in_usd=true` — adds `value_usd_now` to all `layer_2.erc_20` items yielding the current (not at the moment of the transaction!) USD value of tokens (`null` if the price is unknown)
+-   `?events=true` — this option costs `1` additional request point to use. When enabled, it adds an array of event logs to the output. Every log contains `topics`, `data`, `contract`, `log_index`, and `decoded_event`. Depending on how much our API knows about the event signature, there are 3 detalization levels for `decoded_event` (example transaction with all 3: `https://api.blockchair.com/ethereum/dashboards/transaction/0x7d52cf58fe78403e8816dae6e900baff92b35760b4ed81cecd2590eafcde3dad?events=true`):
+    -   Full data: `decoded_event` contains both the full event name with its argument names (`name_full`, example: `Approval(address owner, address spender, uint256 value)`), and the argument values in the `arguments` array;
+    -   Partial data: only `name_with_types` is known (example: `Withdrawal(address, uint256)`), `arguments` yields `null`;
+    -   No data: `decoded_event` yields `null`.
+
+**Output:**
+
+`data` contains an associative array where found transaction hashes are used as keys:
+
+-   `data.{:hash}.transaction` — information about the transaction (see [Ethereum-like transaction object](https://blockchair.com/api/docs#link_206))
+-   `data.{:hash}.calls` — the array of all calls made during the execution of the transaction (always `null` for mempool transactions and the last 6 blocks)
+
+Additional data:
+
+-   `data.{:hash}.layer_2.erc_20` (only if `?erc_20=true` is set) — an array of ERC-20 transfers (or an empty array if there are none), Each array element contains the following keys: `token_address`, `token_name`, `token_symbol`, `token_decimals`, `sender`, `recipient`, `value` — field descriptions are available [here](https://blockchair.com/api/docs#link_506).
+-   `data.{:hash}.effects` (only if `?effects=true` is set) — yields all ETH ad ERC-20 balance changes for the transaction in a neat format. Keys are `0x0000000000000000000000000000000000000000` for ETH or token address for ERC-20's. Each array element contains the following keys: `asset_type`, `asset_name`, `asset_symbol`, `asset_decimals`, `changes`. `changes` is an array containing all the changes for the asset (keys are Ethereum addresses, and values are balance changes). Please note this option is experimental. Example request: `https://api.blockchair.com/ethereum/dashboards/transaction/0xd9a24f57c713207c39c58e8ef3cb44e115fcc8bd0f85eb4ea82c78bc065a723f?effects=true&erc_20=true`. If `?erc_20=true` option is not used, `?effects=true` won't yield ERC-20 data.
+
+In case transaction is confirmed on the blockchain, `data.{:hash}.transaction.block_id` contains the block number it's included in. If the transaction is in the mempool, `data.{:hash}.transaction.block_id` yields `-1`. If the transaction is neither present in the blockchain, nor in the mempool, there won't be `data.{:hash}` key with data.
+
+**Context keys:**
+
+-   `context.results` — number of found transactions
+-   `context.state` — best block height on the `{:eth_chain}` chain (tip: it's possible to calculate the number of confirmation transaction received using this formula: `confirmations = data.{:id}.transaction.block_id - context.state + 1`, or if `data.{:id}.transaction.block_id` is `-1` it's an unconfirmed transaction)
+-   `context.state_layer_2` — the latest block number for which our engine has processed second layer (e.g. ERC-20) transactions. If it's less than the block id in your current environment (e.g. block id of a transaction you requested), it makes sense to repeat the request after some time to retrieve second layer data
+
+**Example requests:**
+
+-   `https://api.blockchair.com/ethereum/dashboards/transaction/0xc132a422513e39038269e091847319a14029feb42c66bd1424c57dfc0e4f8d08`
+-   `https://api.blockchair.com/ethereum/dashboards/transactions/0xc132a422513e39038269e091847319a14029feb42c66bd1424c57dfc0e4f8d08,0x502bc6fe1f39738f0fd3223a2f125433b8ec7e80acd11ef514f6909536cc9e66`
+-   `https://api.blockchair.com/ethereum/dashboards/transaction/0xc132a422513e39038269e091847319a14029feb42c66bd1424c57dfc0e4f8d08?erc_20=true`
+-   `https://api.blockchair.com/ethereum/dashboards/transaction/0x77025c5c7ff5eeb4bb164a4be84dd49192e12086cc321199f73888830c3ecd9e?erc_20=true&assets_in_usd=true`
+
+**Bonus endpoint:**
+
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/transaction/{:hash}/priority`
+
+For mempool transactions shows priority (`position`) by `gas_price` over other transactions (`out_of` mempool transactions). `position` is `null` if the transaction is not in the mempool. `eta_seconds` returns an approximate time for the transaction to confirm (in seconds, exprimental). Cost: `1`.
+
+**Request cost formula:**
+
+-   `1` for `https://api.blockchair.com/{:eth_chain}/dashboards/transaction/{:hash}` endpoint
+-   `1 + (0.1 * (entity count - 1))` for `https://api.blockchair.com/{:eth_chain}/dashboards/transactions/{:hash},...,{:hash}` endpoint (e.g. it's `1 + (0.1 * (10 - 1)) = 1.9` for requesting 10 transactions)
+-   Using `?erc_20=true` adds `1` for each requested transaction
+-   Using `?effects=true` adds `1` for each requested transaction
+-   Using `?events=true` adds `1` for each requested transaction
+-   Using `?trace_mempool=true` adds `1` for each requested transaction
+
+**Endpoint:**
+
+-   `https://api.blockchair.com/{:eth_chain}/dashboards/address/{:address}`
+
+**Where:**
+
+-   `{:eth_chain}` can only be: `ethereum` or `ethereum/testnet`
+-   `{:address}` is an Ethereum address (either an account or a contract, the address should start with `0x`)
+
+**Possible options:**
+
+-   `?limit={:call_limit}` — limits the number of returned latest calls associated with the address. Default is `100`. Maximum is `10000`.
+-   `?offset={:call_offset}` — allows to paginate calls. Default is `0`, and the maximum is `1000000`.
+-   `?erc_20={...}` — returns information about ERC-20 token balances of the address (tokens are sorted by market capitalization descending):
+    -   `?erc_20=approximate` (or `?erc_20=true`, default) — yields all token balances from our database. These values may miss some non-standard transfers in tokens that don't follow the ERC-20 standard in full. Please double-check if this option returns correct values for the tokens you'd want to get information about. Using this option costs `1`.
+    -   `?erc_20=precise` — yields all token balances from our node. The process is the following: we gather information from our database about potential ERC-20 tokens the address may hold, and then for each token we call `getBalance` function using our node to get precise balances. Please note that if for some reason some contract doesn't follow the ERC-20 standard, our database may still miss records about the address holding this token, and there will be no request to the node about this token. So while balances yielded with this option are precise, some non-standard tokens may still be missed. Using this option costs `2`.
+    -   `?erc_20={:token_address},...,{:token_address}` (recommended) — yields balances for the enlisted ERC-20 tokens from our node. That's the recommended way if you have an exact list of tokens you'd like to check. Even if some token doesn't follow the ERC-20 standard, but still has `getBalance` function implemented, the correct balance will be returned. Using this option costs `0.75` + `0.01` for each contract checked (the cheapest option!)
+-   `?nonce=true` — returns current account nonce (mempool transactions are taken in account)
+-   `?output=type` — this option scrubs all the output data except for the address type (`account` or `contract`). This may be a very fast handy way to retrieve address type instead of requesting full address data
+-   `?assets_in_usd=true` — adds `asset_balance_usd` to the output yielding the total USD value of all (excluding ETH) account assets (currently it's most popular ERC-20 tokens only), as well as `balance_usd` to all `layer_2.erc_20` items. If the exchange rate for a particular token is unknown, returns `null` for this token.
+-   `?state=latest` — if this option is enabled, `balance` will yield the confirmed balance, and the `calls` array won't include unconfirmed data
+-   `?contract_details=true` — if applied, it adds additional data on the address if it's a contract. At the moment, it works with ERC-20 contracts only yielding `token_name`, `token_symbol`, and `token_decimals`. It also yields some additional fields for all contracts: `creating_transaction_hash`, `creating_address`, and `creating_transaction_time`. The additional cost of using this option is `0.5`
+
+**Output:**
+
+In case the address has been found, `data.{:address}` returns an array consisting of the following elements:
+
+-   `address`
+    -   `address.type` — address type (`account` — for a simple address, `contract` — for a contract)
+    -   `address.contract_code_hex` — hex code of the contract at the moment of creation (for a contract), or `null` for an address
+    -   `address.contract_created` — for contracts only — if the contact was indeed created then `true`, if not (i.e. with a failed `create` call) — `false`, for a simple address yields `null`
+    -   `address.contract_destroyed` — for contracts only — if the contact was successfully destroyed (`SELFDESCTRUCT`) then `true`, if not — `false`; for a simple address yields `null`
+    -   `address.balance` — exact address balance in wei (here and below values in wei returned as strings as they don't fit into integers)
+    -   `address.balance_usd` — address balance in USD (float)
+    -   `address.received_approximate` — total received in wei (approximately) †
+    -   `address.received_usd` — total received in USD (approximately) †
+    -   `address.spent_approximate` — total spent in wei (approximately) †
+    -   `address.spent_usd` — total spent in USD (approximately) †
+    -   `address.fees_approximate` — total spent in transaction fees in wei (approximately) †
+    -   `address.fees_usd` — total spent in transaction fees in USD (approximately) †
+    -   `address.receiving_call_count` — number of calls the address has received, where value transfer occured ‡
+    -   `address.spending_call_count` — number of calls that has been made by this address where value transfer occured ‡
+    -   `address.call_count` — total number of calls the address participated in (may be greater than `receiving_call_count` + `spending_call_count`, because it also takes failed calls into account)
+    -   `address.transaction_count` — number of transactions the address participated in
+    -   `address.first_seen_receiving` — timestamp (UTC) when the address received a successful incoming call for the first time
+    -   `address.last_seen_receiving` — timestamp (UTC) when the address received a successful incoming call for the last time
+    -   `address.first_seen_spending` — timestamp (UTC) when the address sent a successful call for the first time
+    -   `address.last_seen_spending` — timestamp (UTC) when the address sent a successful call for the last time
+    -   `address.nonce` — current account nonce (only if `?nonce=true` is set, `null` otherwise)
+-   `calls` — an array of the latest address call, each element of an array containing the following elements: `block_id`, `transaction_hash`, `index`, `time`, `sender`, `recipient`, `value`, `value_usd`, `transferred` (see the description [here](https://blockchair.com/api/docs#link_403))
+-   `layer_2.erc_20` (only if `?erc_20=true` is set) — the array of ERC-20 token balances of the address, each element contains the following fields: `token_address`, `token_name`, `token_symbol`, `token_decimals`, `balance_approximate` (number of tokens), `balance` (exact number of tokens in the smallest denomination). Note that `balance ≈ balance_approximate * 10 ^ token_decimals`.
+
+Additional data:
+
+-   `data.{:hash}.layer_2.erc_20` (or an empty array if there are none), Each array element contains the following keys: `token_address`, `token_name`, `token_symbol`, `token_decimals`, `sender`, `recipient`, `value` — field descriptions are available [here](https://blockchair.com/api/docs#link_506).
+
+`context.results` contains the number of found addresses (0 or 1).
+
+Notes:
+
+-   † — for these fields the wei value can be rounded. For a million of calls, the rounding error can be more than 1 ether.
+-   ‡ — only those calls are counted that fit the following condition: `transferred = true`, i.e. calls that do not change state (including `staticcall`, failed calls, etc.) are not taken into account
+
+**Context keys:**
+
+-   `context.results` — number of found addresses
+-   `context.limit` — applied limit
+-   `context.offset` — applied offset
+-   `context.state` — best block height on the `{:eth_chain}` chain (tip: it's possible to calculate the number of confirmation block received using this formula: `confirmations = block_id - context.state + 1`)
+-   `context.state_layer_2` — the latest block number for which our engine has processed second layer (e.g. ERC-20) transactions. If it's less than the block id in your current environment (e.g. block id of a transaction you requested), it makes sense to repeat the request after some time to retrieve second layer data
+
+**Example requests:**
+
+-   `https://api.blockchair.com/ethereum/dashboards/address/0x3282791d6fd713f1e94f4bfd565eaa78b3a0599d`
+-   `https://api.blockchair.com/ethereum/dashboards/address/0x3282791d6fd713f1e94f4bfd565eaa78b3a0599d?limit=1&offset=0`
+-   `https://api.blockchair.com/ethereum/dashboards/address/0x3282791d6fd713f1e94f4bfd565eaa78b3a0599d?erc_20=true&nonce=true`
+
 ## Infinitable endpoints (SQL-like queries)
 
 These endpoints allow you to filter, sort, and aggregate blockchain data. The output is database rows. Unlike dashboard and raw endpoints, all infinitable endpoints listed in this section can be considered as just one endpoint as it has the same options and the same output structure across different blockchains and entities. Here it is: `https://api.blockchair.com/{:table}{:query}`.
@@ -40,30 +268,6 @@ Here are some example queries without using `{:query}`:
 
 -   `https://api.blockchair.com/bitcoin/blocks`
 -   `https://api.blockchair.com/bitcoin-cash/mempool/transactions`
-
-**The output skeleton is the following:**
-
-```
-{
-  "data": [
-    {
-      ... // row 1 data
-    },
-    ...
-    {
-      ... // row 10 data
-    },    
-  ],
-  "context": {
-    "limit": 10, // the default limit of 10 is applied
-    "offset": 0, // no offset has been set
-    "rows": 10, // the response contains 10 rows
-    "total_rows": N, // but there are N rows in the table matching {:query} (total number of rows if it's not set)
-    "state": S, // the latest block number on the blockchain
-    ...
-  }
-}
-```
 
 Further documentation sections describe fields returned for different tables. Some of the dashboard endpoints are using the same fields as well.
 
