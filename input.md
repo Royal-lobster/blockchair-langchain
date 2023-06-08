@@ -1,8 +1,5 @@
 # API DOCUMENTATION FOR BLOCKCHAIR
 
-
-NOTE: Try to use only dashboard endpoints if querying for ethereum.
-
 ## Dashboard endpoints for Ethereum
 
 ### Block info
@@ -116,6 +113,10 @@ If there's no `{:hash}` has been found in the database, there won't be such key.
 
 -   `data.{:hash}.transaction` — information about the transaction (see [Ethereum-like transaction object](https://blockchair.com/api/docs#link_206))
 -   `data.{:hash}.calls` — the array of all calls made during the execution of the transaction (always `null` for mempool transactions and the last 6 blocks)
+
+
+NOTE: use erc_20=true&erc_721=true to include those in data. and effects=true to know that the transaction effects like what tokens are transfered, etc
+
 
 Additional data:
 
@@ -726,18 +727,6 @@ Notes:
 
 -   the default sorting — `balance DESC`
 
-**Explore visualizations on our front-end:**
-
--   [https://blockchair.com/bitcoin/addresses](https://blockchair.com/bitcoin/addresses)
--   [https://blockchair.com/bitcoin-cash/addresses](https://blockchair.com/bitcoin-cash/addresses)
--   [https://blockchair.com/litecoin/addresses](https://blockchair.com/litecoin/addresses)
--   [https://blockchair.com/bitcoin-sv/addresses](https://blockchair.com/bitcoin-sv/addresses)
--   [https://blockchair.com/dogecoin/addresses](https://blockchair.com/dogecoin/addresses)
--   [https://blockchair.com/dash/addresses](https://blockchair.com/dash/addresses)
--   [https://blockchair.com/groestlcoin/addresses](https://blockchair.com/groestlcoin/addresses)
--   [https://blockchair.com/zcash/addresses](https://blockchair.com/zcash/addresses)
--   [https://blockchair.com/bitcoin/testnet/addresses](https://blockchair.com/bitcoin/testnet/addresses)
-
 ## Inifinitable endpoints for Ethereum and Ethereum Goerli Testnet
 
 ### `blocks` table
@@ -805,10 +794,6 @@ Notes:
 -   Search by fields that contain values in wei (`value_total`, `internal_value_total`, `generation`, `uncle_generation`, `fee_total`, `reward`) may be with some inaccuracies
 -   The difference between `value_total` and `internal_value_total`: e.g., a transaction itself sends 0 eth, but this transaction is a call of a contract that sends someone, let's say, 10 eth. Then `value` will be 0 eth, and `internal_value` - 10 eth
 -   The default sorting is `id DESC`
-
-**Explore visualizations on our front-end:**
-
--   [https://blockchair.com/ethereum/blocks](https://blockchair.com/ethereum/blocks)
 
 ### `uncles` table
 
@@ -1097,10 +1082,6 @@ Note: this particular table doesn't support querying. The only query section it 
 **Output:**
 
 `data` contains an array of database rows. Each row is in the format which accords with Omni Layer specification ([https://github.com/OmniLayer/spec](https://github.com/OmniLayer/spec))
-
-**Explore visualization on our front-end:**
-
--   [https://blockchair.com/bitcoin/omni/properties](https://blockchair.com/bitcoin/omni/properties)
 
 ### `tokens` table (ERC-20)
 
