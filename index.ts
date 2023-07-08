@@ -17,7 +17,7 @@ class CustomRequestGetTool extends RequestsGetTool {
   async call(input: string) {
     try {
       const { data } = await axios.get(input);
-      // if any nested array or object have more than 50 elements, remove that key from data beahaehae
+      // if any nested array or object have more than 50 elements, remove that key from data 
       const recurse = (obj: any) => {
         if (!obj) return;
         Object.keys(obj).forEach((key) => {
